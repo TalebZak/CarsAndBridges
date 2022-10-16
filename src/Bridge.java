@@ -3,42 +3,47 @@ import java.util.concurrent.TimeUnit;
 
 class Bridge {
     //semaphore for dir_0 and dir_1 that can hold 3 vehicles
-    private Semaphore sem_dir_0, sem_dir_1, sem_bridge, sem_lock;
-    private int car_dir0, car_dir1, car_cnt, car, waiting_dir0, waiting_dir1, waiting_bridge0,
-            waiting_bridge1, departure_index, current_dir;
+    private Semaphore bridge, mutex;
+    //initialize a sephamore array for each direction where every index is a direction
+    private Semaphore[] direction;
+
+    private int currentDir;
+
+    private int activeVehicles;
+
+    private int waitingVehicles;
+
+    private int departure_index;
 
     //constructor
     public Bridge() {
-        sem_dir_0 = new Semaphore(3);
-        sem_dir_1 = new Semaphore(3);
-        sem_bridge = new Semaphore(1);
-        sem_lock = new Semaphore(1);
-        car_dir0 = 0;
-        car_dir1 = 0;
-        car_cnt = 0;
-        car = 0;
-        waiting_dir0 = 0;
-        waiting_dir1 = 0;
-        waiting_bridge0 = 0;
-        waiting_bridge1 = 0;
+        bridge = new Semaphore(3, true);
+        mutex = new Semaphore(1, true);
+        direction = new Semaphore[2];
+        direction[0] = new Semaphore(0, true);
+        direction[1] = new Semaphore(0, true);
+        currentDir = 0;
+        activeVehicles = 0;
+        waitingVehicles = 0;
         departure_index = 0;
-        current_dir = -1;
     }
-
-
+    private int reverse_dir(int dir) {
+        return dir == 0 ? 1 : 0;
+    }
     public void arriveBridge(int dir) {
         try {
-            if (dir == 0) {
-                if (car_cnt == 0)
-                    sem_bridge.acquire(1);
-                sem_dir_0.acquire(1);
-                car_cnt++;
-            } else {
-                if (car == 0)
-                    sem_bridge.acquire(1);
-                sem_dir_1.acquire(1);
-                car++;
+            mutex.acquire(1);
+            if (currentDir != dir && activeVehicles > 0){
+                waitingVehicles++;
+                mutex.release(1);
+                direction[dir].acquire();
             }
+            else{
+                currentDir = dir;
+                activeVehicles++;
+                mutex.release(1);
+            }
+            bridge.acquire(1);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -58,22 +63,21 @@ class Bridge {
         try {
             System.out.printf("Leaving the bridge: Car %d with departure index %d coming dir %d\n",
                     vehicle_id, ++departure_index, dir);
-            if (dir == 0) {
-                sem_dir_0.release(1);
-                car_cnt--;
 
-                if (car_cnt == 0)
-                    sem_bridge.release(1);
-            } else {
-                sem_dir_1.release(1);
-                car--;
-                if (car == 0)
-                    sem_bridge.release(1);
+            bridge.release(1);
+            mutex.acquire(1);
+            if (--activeVehicles == 0){
+                while (waitingVehicles > 0){
+                    waitingVehicles--;
+                    activeVehicles++;
+                    currentDir = reverse_dir(dir);
+                    direction[reverse_dir(dir)].release();
+                }
             }
+            mutex.release(1);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     public void oneVehicle(int vehicle_id, int dir, int time_to_cross) {
