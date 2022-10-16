@@ -2,7 +2,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 class Bridge {
-    //semaphore for dir_0 and dir_1 that can hold 3 vehicles
     private Semaphore bridge, mutex;
     //initialize a sephamore array for each direction where every index is a direction
     private Semaphore[] direction;
@@ -30,6 +29,7 @@ class Bridge {
     private int reverse_dir(int dir) {
         return dir == 0 ? 1 : 0;
     }
+
     public void arriveBridge(int dir) {
         try {
             mutex.acquire(1);
@@ -53,7 +53,6 @@ class Bridge {
         try {
             System.out.println("Vehicle " + vehicle_id + " is crossing the bridge from direction " + dir);
             TimeUnit.SECONDS.sleep(time_to_cross);
-            //release the bridge
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -61,9 +60,8 @@ class Bridge {
 
     public void exitBridge(int vehicle_id, int dir) {
         try {
-            System.out.printf("Leaving the bridge: Car %d with departure index %d coming dir %d\n",
-                    vehicle_id, ++departure_index, dir);
-
+            System.out.println("Vehicle "+ vehicle_id  + " is leaving from direction "+ dir
+                    + " with departure index " + (++departure_index));
             bridge.release(1);
             mutex.acquire(1);
             if (--activeVehicles == 0){
@@ -81,7 +79,6 @@ class Bridge {
     }
 
     public void oneVehicle(int vehicle_id, int dir, int time_to_cross) {
-        //print the number of the vehicle and the direction it is arriving from
         try {
             System.out.println("Vehicle " + vehicle_id + " is arriving from direction " + dir);
             arriveBridge(dir);

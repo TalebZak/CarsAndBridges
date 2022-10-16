@@ -63,7 +63,6 @@ public class Main {
                 System.out.println("Invalid option");
                 System.exit(0);
         }
-
         //loop on every vehicle and join if it is alive and not null
         for (int i = 0; i < 20; i++) {
             try {
